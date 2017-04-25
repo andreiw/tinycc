@@ -1378,7 +1378,7 @@ static int tcc_set_linker(TCCState *s, const char *option)
             copy_linker_arg(&s->soname, p, 0);
 #ifdef TCC_TARGET_PE
         } else if (link_option(option, "large-address-aware", &p)) {
-            s->pe_characteristics |= 0x20;
+            s->pe_characteristics |= IMAGE_FILE_LARGE_ADDRESS_AWARE;
         } else if (link_option(option, "file-alignment=", &p)) {
             s->pe_file_align = strtoul(p, &end, 16);
         } else if (link_option(option, "stack=", &p)) {
@@ -1386,24 +1386,24 @@ static int tcc_set_linker(TCCState *s, const char *option)
         } else if (link_option(option, "subsystem=", &p)) {
 #if defined(TCC_TARGET_I386) || defined(TCC_TARGET_X86_64)
             if (!strcmp(p, "native")) {
-                s->pe_subsystem = 1;
+                s->pe_subsystem = IMAGE_SUBSYSTEM_NATIVE;
             } else if (!strcmp(p, "console")) {
-                s->pe_subsystem = 3;
+                s->pe_subsystem = IMAGE_SUBSYSTEM_WINDOWS_CUI;
             } else if (!strcmp(p, "gui") || !strcmp(p, "windows")) {
-                s->pe_subsystem = 2;
+                s->pe_subsystem = IMAGE_SUBSYSTEM_WINDOWS_GUI;
             } else if (!strcmp(p, "posix")) {
-                s->pe_subsystem = 7;
+                s->pe_subsystem = IMAGE_SUBSYSTEM_POSIX_CUI;
             } else if (!strcmp(p, "efiapp")) {
-                s->pe_subsystem = 10;
+                s->pe_subsystem = IMAGE_SUBSYSTEM_EFI_APPLICATION;
             } else if (!strcmp(p, "efiboot")) {
-                s->pe_subsystem = 11;
+                s->pe_subsystem = IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER;
             } else if (!strcmp(p, "efiruntime")) {
-                s->pe_subsystem = 12;
+                s->pe_subsystem = IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER;
             } else if (!strcmp(p, "efirom")) {
-                s->pe_subsystem = 13;
+                s->pe_subsystem = IMAGE_SUBSYSTEM_EFI_ROM;
 #elif defined(TCC_TARGET_ARM)
             if (!strcmp(p, "wince")) {
-                s->pe_subsystem = 9;
+                s->pe_subsystem = IMAGE_SUBSYSTEM_WINDOWS_CE_GUI;
 #endif
             } else
                 goto err;

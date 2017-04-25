@@ -28,6 +28,17 @@
 #define strnicmp strncasecmp
 #endif
 
+#define CHARACTERISTICS (IMAGE_FILE_EXECUTABLE_IMAGE    |\
+                         IMAGE_FILE_DEBUG_STRIPPED      |\
+                         IMAGE_FILE_LOCAL_SYMS_STRIPPED |\
+                         IMAGE_FILE_LINE_NUMS_STRIPPED)
+
+#define CHARACTERISTICS_32 (CHARACTERISTICS             |\
+                            IMAGE_FILE_32BIT_MACHINE)
+
+#define CHARACTERISTICS_64 (CHARACTERISTICS             |\
+                            IMAGE_FILE_LARGE_ADDRESS_AWARE)
+
 #ifdef TCC_TARGET_X86_64
 # define ADDR3264 ULONGLONG
 # define REL_TYPE_DIRECT R_X86_64_64
@@ -538,19 +549,15 @@ static int pe_write(struct pe_info *pe)
     0x00000000, /*DWORD   TimeDateStamp; */
     0x00000000, /*DWORD   PointerToSymbolTable; */
     0x00000000, /*DWORD   NumberOfSymbols; */
-#if defined(TCC_TARGET_X86_64)
+#if PTR_SIZE == 8
     0x00F0, /*WORD    SizeOfOptionalHeader; */
-    0x022F  /*WORD    Characteristics; */
-#define CHARACTERISTICS_DLL 0x222E
-#elif defined(TCC_TARGET_I386)
+    /*WORD    Characteristics; */
+    CHARACTERISTICS_64
+#else /* PTR_SIZE == 4 */
     0x00E0, /*WORD    SizeOfOptionalHeader; */
-    0x030F  /*WORD    Characteristics; */
-#define CHARACTERISTICS_DLL 0x230E
-#elif defined(TCC_TARGET_ARM)
-    0x00E0, /*WORD    SizeOfOptionalHeader; */
-    0x010F, /*WORD    Characteristics; */
-#define CHARACTERISTICS_DLL 0x230F
-#endif
+    /*WORD    Characteristics; */
+    CHARACTERISTICS_32
+#endif /* PTR_SIZE */
 },{
     /* IMAGE_OPTIONAL_HEADER opthdr */
     /* Standard fields. */
@@ -709,8 +716,18 @@ static int pe_write(struct pe_info *pe)
     pe_header.opthdr.Subsystem = pe->subsystem;
     if (pe->s1->pe_stack_size)
         pe_header.opthdr.SizeOfStackReserve = pe->s1->pe_stack_size;
-    if (PE_DLL == pe->type)
-        pe_header.filehdr.Characteristics = CHARACTERISTICS_DLL;
+
+    if (PE_DLL == pe->type) {
+        pe_header.filehdr.Characteristics |= IMAGE_FILE_DLL;
+    } else {
+        /*
+         * Regular (non-DLL) executables are stripped of base
+         * relocations, so will load only at the preferred image
+         * base address.
+         */
+        pe_header.filehdr.Characteristics |= IMAGE_FILE_RELOCS_STRIPPED;
+    }
+
     pe_header.filehdr.Characteristics |= pe->s1->pe_characteristics;
 
     sum = 0;
@@ -1930,20 +1947,19 @@ static void pe_set_options(TCCState * s1, struct pe_info *pe)
     }
 
 #if defined(TCC_TARGET_ARM)
-    /* we use "console" subsystem by default */
-    pe->subsystem = 9;
+    pe->subsystem = IMAGE_SUBSYSTEM_WINDOWS_CE_GUI;
 #else
     if (PE_DLL == pe->type || PE_GUI == pe->type)
-        pe->subsystem = 2;
+        pe->subsystem = IMAGE_SUBSYSTEM_WINDOWS_GUI;
     else
-        pe->subsystem = 3;
+        pe->subsystem = IMAGE_SUBSYSTEM_WINDOWS_CUI;
 #endif
     /* Allow override via -Wl,-subsystem=... option */
-    if (s1->pe_subsystem != 0)
+    if (s1->pe_subsystem != IMAGE_SUBSYSTEM_UNKNOWN)
         pe->subsystem = s1->pe_subsystem;
 
     /* set default file/section alignment */
-    if (pe->subsystem == 1) {
+    if (pe->subsystem == IMAGE_SUBSYSTEM_NATIVE) {
         pe->section_align = 0x20;
         pe->file_align = 0x20;
     } else {
@@ -1956,7 +1972,8 @@ static void pe_set_options(TCCState * s1, struct pe_info *pe)
     if (s1->pe_file_align != 0)
         pe->file_align = s1->pe_file_align;
 
-    if ((pe->subsystem >= 10) && (pe->subsystem <= 12))
+    if ((pe->subsystem >= IMAGE_SUBSYSTEM_EFI_APPLICATION) &&
+	(pe->subsystem <= IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER))
         pe->imagebase = 0;
 
     if (s1->has_text_addr)
