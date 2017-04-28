@@ -1379,6 +1379,8 @@ static int tcc_set_linker(TCCState *s, const char *option)
 #ifdef TCC_TARGET_PE
         } else if (link_option(option, "large-address-aware", &p)) {
             s->pe_characteristics |= IMAGE_FILE_LARGE_ADDRESS_AWARE;
+        } else if (link_option(option, "no-strip-base-relocs", &p)) {
+            s->has_base_relocs = 1;
         } else if (link_option(option, "file-alignment=", &p)) {
             s->pe_file_align = strtoul(p, &end, 16);
         } else if (link_option(option, "stack=", &p)) {

@@ -719,11 +719,11 @@ static int pe_write(struct pe_info *pe)
 
     if (PE_DLL == pe->type) {
         pe_header.filehdr.Characteristics |= IMAGE_FILE_DLL;
-    } else {
+    } else if (!pe->s1->has_base_relocs) {
         /*
-         * Regular (non-DLL) executables are stripped of base
-         * relocations, so will load only at the preferred image
-         * base address.
+         * Regular (non-DLL) executables by default are stripped of
+         * base relocations, so will load only at the preferred
+         * image base, unless overridden with -no-strip-base-relocs.
          */
         pe_header.filehdr.Characteristics |= IMAGE_FILE_RELOCS_STRIPPED;
     }
@@ -1100,7 +1100,7 @@ static int pe_section_class(Section *s)
     return -1;
 }
 
-static int pe_assign_addresses (struct pe_info *pe)
+static int pe_assign_addresses (TCCState *s1, struct pe_info *pe)
 {
     int i, k, o, c;
     DWORD addr;
@@ -1108,8 +1108,9 @@ static int pe_assign_addresses (struct pe_info *pe)
     struct section_info *si;
     Section *s;
 
-    if (PE_DLL == pe->type)
+    if (s1->has_base_relocs) {
         pe->reloc = new_section(pe->s1, ".reloc", SHT_PROGBITS, 0);
+    }
 
     // pe->thunk = new_section(pe->s1, ".iedat", SHT_PROGBITS, SHF_ALLOC);
 
@@ -1958,6 +1959,17 @@ static void pe_set_options(TCCState * s1, struct pe_info *pe)
     if (s1->pe_subsystem != IMAGE_SUBSYSTEM_UNKNOWN)
         pe->subsystem = s1->pe_subsystem;
 
+    if (PE_DLL == pe->type ||
+        pe->subsystem == IMAGE_SUBSYSTEM_EFI_APPLICATION ||
+        pe->subsystem == IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER ||
+        pe->subsystem == IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER) {
+        /*
+         * DLLs and UEFI images require base relocs as they may be
+         * loaded anywhere.
+         */
+        s1->has_base_relocs = 1;
+    }
+
     /* set default file/section alignment */
     if (pe->subsystem == IMAGE_SUBSYSTEM_NATIVE) {
         pe->section_align = 0x20;
@@ -1971,10 +1983,6 @@ static void pe_set_options(TCCState * s1, struct pe_info *pe)
         pe->section_align = s1->section_align;
     if (s1->pe_file_align != 0)
         pe->file_align = s1->pe_file_align;
-
-    if ((pe->subsystem >= IMAGE_SUBSYSTEM_EFI_APPLICATION) &&
-	(pe->subsystem <= IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER))
-        pe->imagebase = 0;
 
     if (s1->has_text_addr)
         pe->imagebase = s1->text_addr;
@@ -2000,7 +2008,7 @@ ST_FUNC int pe_output_file(TCCState *s1, const char *filename)
     if (ret)
         ;
     else if (filename) {
-        pe_assign_addresses(&pe);
+        pe_assign_addresses(s1, &pe);
         relocate_syms(s1, s1->symtab, 0);
         for (i = 1; i < s1->nb_sections; ++i) {
             Section *s = s1->sections[i];

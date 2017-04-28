@@ -802,6 +802,7 @@ struct TCCState {
 #ifdef TCC_TARGET_PE
     /* PE info */
     int pe_subsystem;
+    int has_base_relocs;
     unsigned pe_characteristics;
     unsigned pe_file_align;
     unsigned pe_stack_size;

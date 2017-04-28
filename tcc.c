@@ -124,6 +124,7 @@ static const char help2[] =
     "  -file-alignment=              set PE file alignment\n"
     "  -stack=                       set PE stack reserve\n"
     "  -large-address-aware          set related PE option\n"
+    "  -no-strip-base-relocs         always create a relocatable PE file\n"
     "  -subsystem=[console/windows]  set PE subsystem\n"
     "  -oformat=[pe-* binary]        set executable output format\n"
     "Predefined macros:\n"
