@@ -808,7 +808,7 @@ LIBTCCAPI TCCState *tcc_new(void)
 
 #ifdef TCC_TARGET_PE
     tcc_define_symbol(s, "_WIN32", NULL);
-# ifdef TCC_TARGET_X86_64
+# if PTR_SIZE == 8
     tcc_define_symbol(s, "_WIN64", NULL);
 # endif
 #else
@@ -1386,7 +1386,7 @@ static int tcc_set_linker(TCCState *s, const char *option)
         } else if (link_option(option, "stack=", &p)) {
             s->pe_stack_size = strtoul(p, &end, 10);
         } else if (link_option(option, "subsystem=", &p)) {
-#if defined(TCC_TARGET_I386) || defined(TCC_TARGET_X86_64)
+#if defined(TCC_TARGET_I386) || defined(TCC_TARGET_X86_64) || defined(TCC_TARGET_ARM64)
             if (!strcmp(p, "native")) {
                 s->pe_subsystem = IMAGE_SUBSYSTEM_NATIVE;
             } else if (!strcmp(p, "console")) {

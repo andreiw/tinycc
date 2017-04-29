@@ -420,12 +420,18 @@ static void arm64_strv(int sz_, int dst, int bas, uint64_t off)
 
 static void arm64_sym(int r, Sym *sym, unsigned long addend)
 {
+    int avoid_adrp;
+
+#ifdef TCC_TARGET_PE
+    avoid_adrp = 0;
+#else
     // Currently TCC's linker does not generate COPY relocations for
     // STT_OBJECTs when tcc is invoked with "-run". This typically
     // results in "R_AARCH64_ADR_PREL_PG_HI21 relocation failed" when
     // a program refers to stdin. A workaround is to avoid that
     // relocation and use only relocations with unlimited range.
-    int avoid_adrp = 1;
+    avoid_adrp = 1;
+#endif
 
     if (avoid_adrp || sym->a.weak) {
         // (GCC uses a R_AARCH64_ABS64 in this case.)

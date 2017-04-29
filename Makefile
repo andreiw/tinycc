@@ -91,7 +91,7 @@ TCCDOCS = tcc.1 tcc-doc.html tcc-doc.info
 all: $(PROGS) $(TCCLIBS) $(TCCDOCS)
 
 # cross compiler targets to build
-TCC_X = i386 x86_64 i386-win32 x86_64-win32 x86_64-osx arm arm64 arm-wince c67
+TCC_X = i386 x86_64 i386-win32 x86_64-win32 x86_64-osx arm arm64 arm64-win32 arm-wince c67
 # TCC_X += arm-fpa arm-fpa-ld arm-vfp arm-eabi
 
 # cross libtcc1.a targets to build
@@ -125,6 +125,7 @@ DEF-x86_64-win32= -DTCC_TARGET_PE -DTCC_TARGET_X86_64
 DEF-x86_64-osx  = -DTCC_TARGET_MACHO -DTCC_TARGET_X86_64
 DEF-arm-wince   = -DTCC_TARGET_PE -DTCC_TARGET_ARM -DTCC_ARM_EABI -DTCC_ARM_VFP -DTCC_ARM_HARDFLOAT
 DEF-arm64       = -DTCC_TARGET_ARM64
+DEF-arm64-win32 = -DTCC_TARGET_PE -DTCC_TARGET_ARM64
 DEF-c67         = -DTCC_TARGET_C67 -w # disable warnigs
 DEF-arm-fpa     = -DTCC_TARGET_ARM
 DEF-arm-fpa-ld  = -DTCC_TARGET_ARM -DLDOUBLE_SIZE=12
@@ -164,6 +165,7 @@ x86_64-osx_FILES = $(x86_64_FILES)
 arm_FILES = $(CORE_FILES) arm-gen.c arm-link.c arm-asm.c
 arm-wince_FILES = $(arm_FILES) tccpe.c
 arm64_FILES = $(CORE_FILES) arm64-gen.c arm64-link.c
+arm64-win32_FILES = $(arm64_FILES) tccpe.c
 c67_FILES = $(CORE_FILES) c67-gen.c c67-link.c tcccoff.c
 
 # libtcc sources
