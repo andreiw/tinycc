@@ -49,9 +49,11 @@ static const char help[] =
     "  -Ldir       add library path 'dir'\n"
     "  -llib       link with dynamic or static library 'lib'\n"
     "  -r          generate (relocatable) object file\n"
+#ifndef TCC_TARGET_UEFI
     "  -shared     generate a shared library/dll\n"
     "  -rdynamic   export all global symbols to dynamic linker\n"
     "  -soname     set name for shared library to be used at runtime\n"
+#endif
     "  -Wl,-opt[=val]  set linker option (see tcc -hh)\n"
     "Debugger options:\n"
     "  -g          generate runtime debug info\n"
@@ -63,15 +65,17 @@ static const char help[] =
 #endif
     "Misc. options:\n"
     "  -x[c|a|n]   specify type of the next infile\n"
+#ifndef TCC_TARGET_UEFI
     "  -nostdinc   do not use standard system include paths\n"
     "  -nostdlib   do not link with standard crt and libraries\n"
+#endif
     "  -Bdir       set tcc's private include/library dir\n"
     "  -MD         generate dependency file for make\n"
     "  -MF file    specify dependency file name\n"
     "  -m32/64     defer to i386/x86_64 cross compiler\n"
     "Tools:\n"
     "  create library  : tcc -ar [rcsv] lib.a files\n"
-#ifdef TCC_TARGET_PE
+#if defined(TCC_TARGET_PE) && !defined(TCC_TARGET_UEFI)
     "  create def file : tcc -impdef lib.dll [-v] [-o lib.def]\n"
 #endif
     ;
@@ -81,13 +85,17 @@ static const char help2[] =
     "Special options:\n"
     "  -P -P1                        with -E: no/alternative #line output\n"
     "  -dD -dM                       with -E: output #define directives\n"
+#ifndef TCC_TARGET_UEFI
     "  -pthread                      same as -D_REENTRANT and -lpthread\n"
+#endif
     "  -On                           same as -D__OPTIMIZE__ for n > 0\n"
     "  -Wp,-opt                      same as -opt\n"
     "  -include file                 include 'file' above each input file\n"
     "  -isystem dir                  add 'dir' to system include path\n"
     "  -iwithprefix dir              set tcc's private include/library subdir\n"
+#ifndef TCC_TARGET_UEFI
     "  -static                       link to static libraries (not recommended)\n"
+#endif
     "  -dumpversion                  print version\n"
     "  -print-search-dirs            print search paths\n"
     "  -dt                           with -run/-E: auto-define 'test_...' macros\n"
@@ -115,9 +123,11 @@ static const char help2[] =
     "  no-sse                        disable floats on x86_64\n"
 #endif
     "-Wl,... linker options:\n"
+#ifndef TCC_TARGET_UEFI
     "  -nostdlib                     do not link with standard crt/libs\n"
-    "  -[no-]whole-archive           load lib(s) fully/only as needed\n"
     "  -export-all-symbols           same as -rdynamic\n"
+#endif
+    "  -[no-]whole-archive           load lib(s) fully/only as needed\n"
     "  -image-base= -Ttext=          set base address of executable\n"
     "  -section-alignment=           set section alignment in executable\n"
 #ifdef TCC_TARGET_PE
@@ -159,7 +169,11 @@ static const char version[] =
         " Hard Float"
 #endif
 #ifdef TCC_TARGET_PE
+ #ifdef TCC_TARGET_UEFI
+        " UEFI"
+ #else
         " Windows"
+ #endif
 #elif defined(TCC_TARGET_MACHO)
         " Darwin"
 #elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
@@ -219,11 +233,24 @@ static char *default_outputfile(TCCState *s, const char *first_file)
         name = tcc_basename(first_file);
     snprintf(buf, sizeof(buf), "%s", name);
     ext = tcc_fileextension(buf);
-#ifdef TCC_TARGET_PE
+#ifdef TCC_TARGET_UEFI
+    if (s->output_type != TCC_OUTPUT_OBJ) {
+      if (strlen(name) > 8) {
+        /*
+         * If running *on* UEFI, we might not
+         * be able to create long file names.
+         */
+        strncpy(buf, name, 6);
+        buf[6] = '\0';
+        strcat(buf, "~1.efi");
+      } else {
+        strcpy(ext, ".efi");
+      }
+    } else
+#elif defined(TCC_TARGET_PE)
     if (s->output_type == TCC_OUTPUT_DLL)
         strcpy(ext, ".dll");
-    else
-    if (s->output_type == TCC_OUTPUT_EXE)
+    else if (s->output_type == TCC_OUTPUT_EXE)
         strcpy(ext, ".exe");
     else
 #endif
@@ -270,7 +297,7 @@ redo:
             printf(version);
         if (opt == OPT_AR)
             return tcc_tool_ar(s, argc, argv);
-#ifdef TCC_TARGET_PE
+#if defined(TCC_TARGET_PE) && !defined(TCC_TARGET_UEFI)
         if (opt == OPT_IMPDEF)
             return tcc_tool_impdef(s, argc, argv);
 #endif

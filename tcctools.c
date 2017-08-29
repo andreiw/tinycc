@@ -299,7 +299,7 @@ the_end:
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifdef TCC_TARGET_PE
+#if defined(TCC_TARGET_PE) && !defined(TCC_TARGET_UEFI)
 
 ST_FUNC int tcc_tool_impdef(TCCState *s1, int argc, char **argv)
 {
@@ -428,7 +428,7 @@ the_end:
 
 /* re-execute the i386/x86_64 cross-compilers with tcc -m32/-m64: */
 
-#if !defined TCC_TARGET_I386 && !defined TCC_TARGET_X86_64
+#if defined(UEFI_C_SOURCE) || (defined TCC_TARGET_I386 && !defined TCC_TARGET_X86_64)
 
 ST_FUNC void tcc_tool_cross(TCCState *s, char **argv, int option)
 {

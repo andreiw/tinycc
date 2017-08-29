@@ -1502,7 +1502,7 @@ static void pe_print_sections(TCCState *s1, const char *fname)
 /* ------------------------------------------------------------- */
 /* helper function for load/store to insert one more indirection */
 
-#ifndef TCC_TARGET_ARM
+#if !defined(TCC_TARGET_ARM) && !defined(TCC_TARGET_ARM64)
 ST_FUNC SValue *pe_getimport(SValue *sv, SValue *v2)
 {
     int r2;
@@ -1584,7 +1584,7 @@ PUB_FUNC int tcc_get_dllexports(const char *filename, char **pp)
     p = NULL;
     ret = -1;
 
-    fd = open(filename, O_RDONLY | O_BINARY);
+    fd = open(filename, O_RDONLY | O_BINARY, 0);
     if (fd < 0)
         goto the_end_1;
     ret = 1;
@@ -1961,7 +1961,9 @@ static void pe_set_options(TCCState * s1, struct pe_info *pe)
 #endif
     }
 
-#if defined(TCC_TARGET_ARM)
+#if defined(TCC_TARGET_UEFI)
+    pe->subsystem = IMAGE_SUBSYSTEM_EFI_APPLICATION;
+#elif defined(TCC_TARGET_ARM)
     pe->subsystem = IMAGE_SUBSYSTEM_WINDOWS_CE_GUI;
 #else
     if (PE_DLL == pe->type || PE_GUI == pe->type)

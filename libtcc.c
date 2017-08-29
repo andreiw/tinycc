@@ -608,7 +608,7 @@ ST_FUNC int tcc_open(TCCState *s1, const char *filename)
     if (strcmp(filename, "-") == 0)
         fd = 0, filename = "<stdin>";
     else
-        fd = open(filename, O_RDONLY | O_BINARY);
+        fd = open(filename, O_RDONLY | O_BINARY, 0);
     if ((s1->verbose == 2 && fd >= 0) || s1->verbose == 3)
         printf("%s %*s%s\n", fd < 0 ? "nf":"->",
                (int)(s1->include_stack_ptr - s1->include_stack), "", filename);
@@ -737,6 +737,11 @@ LIBTCCAPI TCCState *tcc_new(void)
     s->nocommon = 1;
     s->warn_implicit_function_declaration = 1;
     s->ms_extensions = 1;
+
+#ifdef TCC_TARGET_UEFI
+    s->nostdlib = 1;
+    s->nostdinc = 1;
+#endif
 
 #ifdef CHAR_IS_UNSIGNED
     s->char_is_unsigned = 1;
@@ -1332,8 +1337,10 @@ static int tcc_set_linker(TCCState *s, const char *option)
 
         if (link_option(option, "Bsymbolic", &p)) {
             s->symbolic = 1;
+#ifndef TCC_TARGET_UEFI
         } else if (link_option(option, "nostdlib", &p)) {
             s->nostdlib = 1;
+#endif
         } else if (link_option(option, "fini=", &p)) {
             copy_linker_arg(&s->fini_symbol, p, 0);
             ignoring = 1;
@@ -1366,8 +1373,10 @@ static int tcc_set_linker(TCCState *s, const char *option)
             ignoring = 1;
         } else if (link_option(option, "O", &p)) {
             ignoring = 1;
+#ifndef TCC_TARGET_UEFI
         } else if (link_option(option, "export-all-symbols", &p)) {
             s->rdynamic = 1;
+#endif
         } else if (link_option(option, "rpath=", &p)) {
             copy_linker_arg(&s->rpath, p, ':');
         } else if (link_option(option, "enable-new-dtags", &p)) {
@@ -1451,10 +1460,16 @@ enum {
     TCC_OPTION_c,
     TCC_OPTION_dumpversion,
     TCC_OPTION_d,
-    TCC_OPTION_static,
     TCC_OPTION_std,
+#ifndef TCC_TARGET_UEFI
+    TCC_OPTION_static,
     TCC_OPTION_shared,
     TCC_OPTION_soname,
+    TCC_OPTION_rdynamic,
+    TCC_OPTION_nostdinc,
+    TCC_OPTION_nostdlib,
+    TCC_OPTION_pthread,
+#endif
     TCC_OPTION_o,
     TCC_OPTION_r,
     TCC_OPTION_s,
@@ -1469,13 +1484,9 @@ enum {
     TCC_OPTION_isystem,
     TCC_OPTION_iwithprefix,
     TCC_OPTION_include,
-    TCC_OPTION_nostdinc,
-    TCC_OPTION_nostdlib,
     TCC_OPTION_print_search_dirs,
-    TCC_OPTION_rdynamic,
     TCC_OPTION_param,
     TCC_OPTION_pedantic,
-    TCC_OPTION_pthread,
     TCC_OPTION_run,
     TCC_OPTION_w,
     TCC_OPTION_pipe,
@@ -1514,16 +1525,20 @@ static const TCCOption tcc_options[] = {
     { "c", TCC_OPTION_c, 0 },
     { "dumpversion", TCC_OPTION_dumpversion, 0},
     { "d", TCC_OPTION_d, TCC_OPTION_HAS_ARG | TCC_OPTION_NOSEP },
-    { "static", TCC_OPTION_static, 0 },
     { "std", TCC_OPTION_std, TCC_OPTION_HAS_ARG | TCC_OPTION_NOSEP },
+#ifndef TCC_TARGET_UEFI
+    { "static", TCC_OPTION_static, 0 },
     { "shared", TCC_OPTION_shared, 0 },
     { "soname", TCC_OPTION_soname, TCC_OPTION_HAS_ARG },
+    { "rdynamic", TCC_OPTION_rdynamic, 0 },
+    { "nostdinc", TCC_OPTION_nostdinc, 0 },
+    { "nostdlib", TCC_OPTION_nostdlib, 0 },
+    { "pthread", TCC_OPTION_pthread, 0},
+#endif
     { "o", TCC_OPTION_o, TCC_OPTION_HAS_ARG },
     { "-param", TCC_OPTION_param, TCC_OPTION_HAS_ARG },
     { "pedantic", TCC_OPTION_pedantic, 0},
-    { "pthread", TCC_OPTION_pthread, 0},
     { "run", TCC_OPTION_run, TCC_OPTION_HAS_ARG | TCC_OPTION_NOSEP },
-    { "rdynamic", TCC_OPTION_rdynamic, 0 },
     { "r", TCC_OPTION_r, 0 },
     { "s", TCC_OPTION_s, 0 },
     { "traditional", TCC_OPTION_traditional, 0 },
@@ -1539,8 +1554,6 @@ static const TCCOption tcc_options[] = {
     { "isystem", TCC_OPTION_isystem, TCC_OPTION_HAS_ARG },
     { "iwithprefix", TCC_OPTION_iwithprefix, TCC_OPTION_HAS_ARG },
     { "include", TCC_OPTION_include, TCC_OPTION_HAS_ARG },
-    { "nostdinc", TCC_OPTION_nostdinc, 0 },
-    { "nostdlib", TCC_OPTION_nostdlib, 0 },
     { "print-search-dirs", TCC_OPTION_print_search_dirs, 0 },
     { "w", TCC_OPTION_w, 0 },
     { "pipe", TCC_OPTION_pipe, 0},
@@ -1645,7 +1658,7 @@ static void args_parser_listfile(TCCState *s,
     int argc = 0;
     char **argv = NULL;
 
-    fd = open(filename, O_RDONLY | O_BINARY);
+    fd = open(filename, O_RDONLY | O_BINARY, 0);
     if (fd < 0)
         tcc_error("listfile '%s' not found", filename);
 
@@ -1749,10 +1762,6 @@ reparse:
             args_parser_add_file(s, optarg, AFF_TYPE_LIB);
             s->nb_libraries++;
             break;
-        case TCC_OPTION_pthread:
-            parse_option_D(s, "_REENTRANT");
-            s->option_pthread = 1;
-            break;
         case TCC_OPTION_bench:
             s->do_bench = 1;
             break;
@@ -1789,12 +1798,13 @@ reparse:
             else
                 goto unsupported_option;
             break;
-        case TCC_OPTION_static:
-            s->static_link = 1;
-            break;
         case TCC_OPTION_std:
     	    /* silently ignore, a current purpose:
     	       allow to use a tcc as a reference compiler for "make test" */
+            break;
+#ifndef TCC_TARGET_UEFI
+        case TCC_OPTION_static:
+            s->static_link = 1;
             break;
         case TCC_OPTION_shared:
             x = TCC_OUTPUT_DLL;
@@ -1802,6 +1812,20 @@ reparse:
         case TCC_OPTION_soname:
             s->soname = tcc_strdup(optarg);
             break;
+        case TCC_OPTION_rdynamic:
+            s->rdynamic = 1;
+            break;
+        case TCC_OPTION_nostdinc:
+            s->nostdinc = 1;
+            break;
+        case TCC_OPTION_nostdlib:
+            s->nostdlib = 1;
+            break;
+        case TCC_OPTION_pthread:
+            parse_option_D(s, "_REENTRANT");
+            s->option_pthread = 1;
+            break;
+#endif
         case TCC_OPTION_o:
             if (s->outfile) {
                 tcc_warning("multiple -o option");
@@ -1825,12 +1849,6 @@ reparse:
 	    dynarray_add(&s->cmd_include_files,
 			 &s->nb_cmd_include_files, tcc_strdup(optarg));
 	    break;
-        case TCC_OPTION_nostdinc:
-            s->nostdinc = 1;
-            break;
-        case TCC_OPTION_nostdlib:
-            s->nostdlib = 1;
-            break;
         case TCC_OPTION_run:
 #ifndef TCC_IS_NATIVE
             tcc_error("-run is not available in a cross compiler");
@@ -1873,9 +1891,6 @@ reparse:
             break;
         case TCC_OPTION_w:
             s->warn_none = 1;
-            break;
-        case TCC_OPTION_rdynamic:
-            s->rdynamic = 1;
             break;
         case TCC_OPTION_Wl:
             if (linker_arg.size)

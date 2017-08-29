@@ -653,7 +653,7 @@ static int arm64_hfa_aux(CType *type, int *fsize, int num)
     return -1;
 }
 
-static int arm64_hfa(CType *type, int *fsize)
+static int arm64_hfa(CType *type, uint32_t *fsize)
 {
     if ((type->t & VT_BTYPE) == VT_STRUCT || (type->t & VT_ARRAY)) {
         int sz = 0;
@@ -1118,7 +1118,7 @@ ST_FUNC void gen_va_start(void)
 ST_FUNC void gen_va_arg(CType *t)
 {
     int align, size = type_size(t, &align);
-    int fsize, hfa = arm64_hfa(t, &fsize);
+    uint32_t fsize, hfa = arm64_hfa(t, &fsize);
     uint32_t r0, r1;
 
     if (is_float(t->t)) {

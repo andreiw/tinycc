@@ -22,7 +22,9 @@
 #define _TCC_H
 
 #define _GNU_SOURCE
+#ifndef TCC_ALREADY_CONFIGURED
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -1612,7 +1614,7 @@ ST_FUNC void asm_clobber(uint8_t *clobber_regs, const char *str);
 ST_FUNC int pe_load_file(struct TCCState *s1, const char *filename, int fd);
 ST_FUNC int pe_output_file(TCCState * s1, const char *filename);
 ST_FUNC int pe_putimport(TCCState *s1, int dllindex, const char *name, addr_t value);
-#ifndef TCC_TARGET_ARM
+#if !defined(TCC_TARGET_ARM) && !defined(TCC_TARGET_ARM64)
 ST_FUNC SValue *pe_getimport(SValue *sv, SValue *v2);
 #endif
 #ifdef TCC_TARGET_X86_64

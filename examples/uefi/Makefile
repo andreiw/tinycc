@@ -12,8 +12,8 @@
 # in the top TCC directory.
 #
 EDK2 ?= ../../../edk2
-CC_x86_64 ?= ../../x86_64-win32-tcc
-CC_arm64 ?= ../../arm64-win32-tcc
+CC_x86_64 ?= ../../x86_64-uefi-tcc
+CC_arm64 ?= ../../arm64-uefi-tcc
 
 HELLO_X = x86_64 arm64
 
@@ -26,7 +26,7 @@ INCLUDES_arm64 = -I $(EDK2)/MdePkg/Include/AArch64
 all: $(TARGETS)
 
 %-hello.efi: hello.c
-	$(CC_$*) $(INCLUDES) $(INCLUDES_$*) $^ -Wl,-subsystem=efiapp -nostdlib -o $@
+	$(CC_$*) $(INCLUDES) $(INCLUDES_$*) $^ -o $@
 
 clean:
 	rm -rf *~ *.o $(TARGETS)

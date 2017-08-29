@@ -1,0 +1,44 @@
+#
+# This Tiano (EDK2) build file will allow you to
+# compile TinyCC as a UEFI application.
+#
+# Only tested with X64 and AArch64.
+#
+# Note: if building for AArch64, you will need
+# SoftFloatLib: https://github.com/andreiw/UefiToolsPkg
+#
+
+[Defines]
+  INF_VERSION                    = 0x00010006
+  BASE_NAME                      = tcc
+  FILE_GUID                      = 4ea97c46-7491-4dfd-b442-747010f3ce5e
+  MODULE_TYPE                    = UEFI_APPLICATION
+  VERSION_STRING                 = 0.1
+  ENTRY_POINT                    = ShellCEntryLib
+
+[Sources]
+  tcc.c
+
+[Packages]
+  StdLib/StdLib.dec
+  MdePkg/MdePkg.dec
+  ShellPkg/ShellPkg.dec
+
+[LibraryClasses]
+  LibC
+  LibStdio
+  LibMath
+  LibLocale
+  DevShell
+
+[LibraryClasses.AARCH64]
+  SoftFloatLib
+
+[BuildOptions]
+   GCC:*_*_*_CC_FLAGS = -DGCC_MAJOR=`$(CC) -dumpversion | cut -f1 -d.` -DGCC_MINOR=`$(CC) -dumpversion | cut -f2 -d.` -DTCC_VERSION=\"`head $(MODULE_DIR)/VERSION`\" -DCONFIG_TCCDIR=\".\" -DTCC_ALREADY_CONFIGURED -DONE_SOURCE=1 -DCONFIG_TCC_STATIC -DTCC_TARGET_PE -DTCC_TARGET_UEFI -Dstrtof=_strtof
+
+[BuildOptions.X64]
+   GCC:*_*_*_CC_FLAGS = -DTCC_TARGET_X86_64
+
+[BuildOptions.AARCH64]
+   GCC:*_*_*_CC_FLAGS = -DTCC_TARGET_ARM64
